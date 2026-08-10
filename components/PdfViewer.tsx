@@ -26,6 +26,9 @@ import { usePdfDocument } from "@/hooks/usePdfDocument";
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 0.25;
+const FIT_WIDTH_ZOOM = 1;
+const DEFAULT_DESKTOP_ZOOM = 0.75;
+const DESKTOP_MEDIA_QUERY = "(min-width: 768px)";
 
 export interface PdfViewerProps {
   source: Blob | File;
@@ -164,9 +167,11 @@ export function PdfViewer({
   const [mode, setMode] = useState<PdfViewMode>("single");
   const modeRef = useRef(mode);
   modeRef.current = mode;
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(DEFAULT_DESKTOP_ZOOM);
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
+  const responsiveDefaultAppliedRef = useRef(false);
+  const userAdjustedZoomRef = useRef(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(900);
@@ -200,7 +205,17 @@ export function PdfViewer({
     if (!node) return;
 
     const updateWidth = (width: number) => {
-      if (width > 0) setViewportWidth(Math.floor(width));
+      if (width <= 0) return;
+      setViewportWidth(Math.floor(width));
+      if (!responsiveDefaultAppliedRef.current) {
+        responsiveDefaultAppliedRef.current = true;
+        if (
+          !userAdjustedZoomRef.current &&
+          !window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+        ) {
+          setZoom(FIT_WIDTH_ZOOM);
+        }
+      }
     };
 
     if (typeof ResizeObserver !== "undefined") {
@@ -309,6 +324,7 @@ export function PdfViewer({
   };
 
   const updateZoom = (nextZoom: number) => {
+    userAdjustedZoomRef.current = true;
     const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
     setZoom(clamped);
     window.requestAnimationFrame(() => {
@@ -572,7 +588,7 @@ export function PdfViewer({
             onPageChange={goToPage}
             onZoomOut={() => updateZoom(zoom - ZOOM_STEP)}
             onZoomIn={() => updateZoom(zoom + ZOOM_STEP)}
-            onFitWidth={() => updateZoom(1)}
+            onFitWidth={() => updateZoom(FIT_WIDTH_ZOOM)}
             onToggleSidebar={() => setSidebarOpen((open) => !open)}
             onToggleMode={handleToggleMode}
             onToggleFullscreen={() => void handleToggleFullscreen()}
