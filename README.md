@@ -2,7 +2,7 @@
 
 Монгол хэлтэй, local-first зарчмаар browser дээр ажилладаг PDF бүлгийн менежер. Нэг төслийн PDF бүр тусдаа бүлэг хэвээр үлдэх бөгөөд файлуудыг хооронд нь нэг PDF болгон нийлүүлэхгүй.
 
-Аппыг Vercel-д deploy хийсний дараа компьютер унтарсан үед ч public URL-аар 24/7 нээгдэнэ. `localhost` болон local network IP нь зөвхөн development орчинд ашиглагдана.
+Production сайт: [https://pdf-web-xi.vercel.app](https://pdf-web-xi.vercel.app). Компьютер унтарсан үед ч public URL-аар 24/7 нээгдэнэ. `localhost` болон local network IP нь зөвхөн development орчинд ашиглагдана.
 
 ## Гол боломжууд
 
@@ -121,7 +121,7 @@ GitHub push дууссаны дараа:
 
 Production branch-ийг Vercel Project → **Settings** → **Environments** → **Production** → **Branch Tracking** хэсэгт `main` байгааг шалгана. `main` руу push хийх бүрд Vercel dependency install, production build, deployment-ийг автоматаар ажиллуулна. Custom domain хэрэгтэй бол дараа нь **Settings** → **Domains** хэсгээс холбоно; source code-д production URL hardcode хийх шаардлагагүй. Дэлгэрэнгүйг Vercel-ийн [Git deployment documentation](https://vercel.com/docs/git)-оос харна уу.
 
-Одоогоор Vercel project холбогдоогүй, production deployment болон public URL үүсээгүй.
+Vercel project `kese111s-projects/pdf-web` нь GitHub-ийн `bilguun06/pdf-web` repository-той холбогдсон. Production URL: [https://pdf-web-xi.vercel.app](https://pdf-web-xi.vercel.app).
 
 ## Preview Deployment
 
@@ -196,7 +196,7 @@ Preview болон Production URL нь өөр origin тул browser-ийн `loca
 
 ## Deployment Checklist
 
-Төлөв: 2026-08-07. `[x]` нь энэ workspace дээр баталгаажсан, `[ ]` нь хийгдээгүй эсвэл external account/URL шаардлагатай гэсэн үг.
+Төлөв: 2026-08-10. `[x]` нь local эсвэл production орчинд баталгаажсан, `[ ]` нь хараахан баталгаажаагүй гэсэн үг.
 
 - [x] `npm install` амжилттай
 - [x] `npm run lint` амжилттай
@@ -215,10 +215,10 @@ Preview болон Production URL нь өөр origin тул browser-ийн `loca
 - [x] Git repository зөв
 - [x] `main` branch зөв
 - [x] GitHub remote зөв — `https://github.com/bilguun06/pdf-web.git`
-- [ ] GitHub push амжилттай
-- [ ] Vercel project GitHub-тэй холбогдсон
-- [ ] Production deployment амжилттай
+- [x] GitHub push амжилттай
+- [x] Vercel project GitHub-тэй холбогдсон
+- [x] Production deployment амжилттай
 - [ ] Auto Deploy ажиллаж байгаа
-- [ ] Public URL ажиллаж байгаа
+- [x] Public URL ажиллаж байгаа — `https://pdf-web-xi.vercel.app`
 
-Үлдсэн external алхам: commit-ийг GitHub руу push хийх, дараа нь Vercel дээр `pdf-web` repository-г Import хийж Deploy дарах.
+Үлдсэн шалгалт: энэ README status commit `main` руу push хийгдэхэд Vercel Auto Deploy автоматаар эхэлж байгааг баталгаажуулах.
