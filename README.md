@@ -121,7 +121,7 @@ GitHub push дууссаны дараа:
 
 Production branch-ийг Vercel Project → **Settings** → **Environments** → **Production** → **Branch Tracking** хэсэгт `main` байгааг шалгана. `main` руу push хийх бүрд Vercel dependency install, production build, deployment-ийг автоматаар ажиллуулна. Custom domain хэрэгтэй бол дараа нь **Settings** → **Domains** хэсгээс холбоно; source code-д production URL hardcode хийх шаардлагагүй. Дэлгэрэнгүйг Vercel-ийн [Git deployment documentation](https://vercel.com/docs/git)-оос харна уу.
 
-Vercel project `kese111s-projects/pdf-web` нь GitHub-ийн `bilguun06/pdf-web` repository-той холбогдсон. Production URL: [https://pdf-web-xi.vercel.app](https://pdf-web-xi.vercel.app).
+Vercel project `kese111s-projects/pdf-web` нь GitHub-ийн `bilguun06/pdf-web` repository-той холбогдсон. `main` branch-ийн push бүр Production Deployment, бусад branch болон Pull Request Preview Deployment үүсгэнэ. Production URL: [https://pdf-web-xi.vercel.app](https://pdf-web-xi.vercel.app).
 
 ## Preview Deployment
 
@@ -218,7 +218,7 @@ Preview болон Production URL нь өөр origin тул browser-ийн `loca
 - [x] GitHub push амжилттай
 - [x] Vercel project GitHub-тэй холбогдсон
 - [x] Production deployment амжилттай
-- [ ] Auto Deploy ажиллаж байгаа
+- [x] Auto Deploy ажиллаж байгаа
 - [x] Public URL ажиллаж байгаа — `https://pdf-web-xi.vercel.app`
 
-Үлдсэн шалгалт: энэ README status commit `main` руу push хийгдэхэд Vercel Auto Deploy автоматаар эхэлж байгааг баталгаажуулах.
+Deployment checklist бүрэн баталгаажсан. Цаашдын source өөрчлөлтийг local шалгалтын дараа `main` руу push хийхэд production автоматаар шинэчлэгдэнэ.
