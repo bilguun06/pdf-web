@@ -6,7 +6,7 @@
 - GitHub repository: [https://github.com/bilguun06/pdf-web](https://github.com/bilguun06/pdf-web)
 - Vercel project: `kese111s-projects/pdf-web`
 
-> Дээрх нь одоо байгаа endpoint болон repository-ийн хаяг. Энэ README дэх cloud хувилбар тухайн production deployment-д орсон эсэхийг Vercel Deployments болон доорх шалгах жагсаалтаар тусад нь баталгаажуулна.
+> Cloud sharing хувилбар 2026-08-11-нд Production deployment дээр бодит 3-page PDF upload, тусдаа public browser, read-only viewer болон delete/cleanup flow-оор бүрэн баталгаажсан.
 
 ## Гол боломжууд
 
@@ -61,7 +61,7 @@ https://your-domain.example/share/p_xxxxxxxxxxxxxxxxxxxxxx
 - `shareId` нь `p_` + 22 base64url тэмдэгттэй cryptographically random утга.
 - Зөвхөн үзэх горим: бүлэг сонгох, PDF үзэх, page navigation, zoom, fullscreen, search ажиллана.
 - Бүлэг/PDF нэмэх, солих, устгах, нэрлэх, эрэмбэлэх control харагдахгүй.
-- Share response-д project UUID, edit token/hash, Blob pathname ордоггүй.
+- Share response-д project UUID, edit token/hash, `blobPath` field ордоггүй; шаардлагатай `blobUrl` нь зөвхөн opaque random pathname ашигладаг.
 - Энэ холбоосыг мэддэг хүн төслийг үзэж чадна. Random ID нь нэвтрэх эрхийн системийг орлохгүй.
 
 ### Editor URL
@@ -328,27 +328,27 @@ Build command: `npm run build`. Output Directory-г override хийхгүй; Nex
 
 ## Deployment verification checklist
 
-Доорх нь operator-ийн шалгах жагсаалт; одоогийн төлөвийг урьдчилан claim хийгээгүй.
+Доорх checklist-ийг local болон Production орчинд 2026-08-11-нд шалгасан.
 
-- [ ] `npm install` амжилттай
-- [ ] `npm run lint` амжилттай
-- [ ] `npm run typecheck` амжилттай
-- [ ] `npm run build` амжилттай
-- [ ] Production Neon resource project-т холбогдсон
-- [ ] Production Blob store **Public** бөгөөд project-т холбогдсон
-- [ ] Production environment-д дөрвөн required server-only variable байна
-- [ ] `EDIT_TOKEN_PEPPER` тогтвортой, 32+ тэмдэгттэй
-- [ ] `CRON_SECRET` random, 16+ тэмдэгттэй бөгөөд `/api/cron/blob-cleanup` cron идэвхтэй
-- [ ] Direct URL-аар `npm run db:migrate` амжилттай
-- [ ] Local project өмнөх шигээ refresh-ийн дараа сэргээгдэж байна
-- [ ] Cloud project үүсгэж editor URL авсан
-- [ ] PDF upload progress харагдаж, callback-ийн дараа metadata хадгалагдсан
-- [ ] Өөр browser/device дээр `/share/p_...` нээгдсэн
-- [ ] Share page дээр edit/add/delete/upload control байхгүй
-- [ ] Invalid share ID clean not-found UI харуулсан
-- [ ] Editor mutation буруу/дутуу token-той үед `401` буцаасан
-- [ ] Public share response edit token/hash болон Blob pathname агуулаагүй
-- [ ] Production URL-ийн хамгийн сүүлийн deployment `READY`
+- [x] `npm install` амжилттай
+- [x] `npm run lint` амжилттай
+- [x] `npm run typecheck` амжилттай
+- [x] `npm run build` амжилттай
+- [x] Production Neon resource project-т холбогдсон
+- [x] Production Blob store **Public** бөгөөд project-т холбогдсон
+- [x] Production environment-д дөрвөн required server-only variable байна
+- [x] `EDIT_TOKEN_PEPPER` тогтвортой, 32+ тэмдэгттэй
+- [x] `CRON_SECRET` random, 16+ тэмдэгттэй бөгөөд `/api/cron/blob-cleanup` cron идэвхтэй
+- [x] Direct URL-аар `npm run db:migrate` амжилттай
+- [x] Local project өмнөх шигээ refresh-ийн дараа сэргээгдэж байна
+- [x] Cloud project үүсгэж editor URL авсан
+- [x] PDF upload progress харагдаж, callback-ийн дараа metadata хадгалагдсан
+- [x] Өөр browser/device дээр `/share/p_...` нээгдсэн
+- [x] Share page дээр edit/add/delete/upload control байхгүй
+- [x] Invalid share ID clean not-found UI харуулсан
+- [x] Editor mutation буруу/дутуу token-той үед `401` буцаасан
+- [x] Public share response edit token/hash, `blobPath` field агуулаагүй бөгөөд Blob URL нь internal project/group UUID задруулаагүй
+- [x] Production URL-ийн хамгийн сүүлийн deployment `READY`
 
 ## Git workflow
 
