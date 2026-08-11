@@ -47,29 +47,55 @@ interface UploadTokenPayload extends Omit<UploadClientPayload, "fileSize"> {
 }
 
 const BLOB_HOST_PATTERN = /^[a-z0-9]+\.public\.blob\.vercel-storage\.com$/i;
+const OPAQUE_REQUESTED_PATHNAME_PATTERN =
+  /^pdfs\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.pdf$/i;
 
-function requestedPathnamePattern(projectId: string, groupId: string): RegExp {
+function legacyRequestedPathnamePattern(projectId: string, groupId: string): RegExp {
   return new RegExp(
     `^projects/${projectId}/${groupId}/[0-9a-f-]{36}\\.pdf$`,
     "i",
   );
 }
 
-function completedPathnamePattern(projectId: string, groupId: string): RegExp {
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function completedPathnamePattern(requestedPathname: string): RegExp {
+  const requestedBase = requestedPathname.slice(0, -4);
   return new RegExp(
-    `^projects/${projectId}/${groupId}/[0-9a-f-]{36}(?:-[A-Za-z0-9_-]+)?\\.pdf$`,
+    `^${escapeRegExp(requestedBase)}(?:-[A-Za-z0-9_-]+)?\\.pdf$`,
     "i",
   );
 }
 
-function assertRequestedPathname(
+function assertPathnameUuid(pathname: string): void {
+  const basename = pathname.slice(pathname.lastIndexOf("/") + 1, -4);
+  if (!UUID_PATTERN.test(basename)) {
+    throw new CloudApiError("VALIDATION_ERROR", "Blob файлын ID буруу байна.", 400);
+  }
+}
+
+function assertOpaqueRequestedPathname(pathname: string): void {
+  if (pathname.length > 240 || !OPAQUE_REQUESTED_PATHNAME_PATTERN.test(pathname)) {
+    throw new CloudApiError(
+      "VALIDATION_ERROR",
+      "Blob pathname буруу байна.",
+      400,
+    );
+  }
+  assertPathnameUuid(pathname);
+}
+
+function assertCallbackRequestedPathname(
   pathname: string,
   projectId: string,
   groupId: string,
 ): void {
   if (
     pathname.length > 240 ||
-    !requestedPathnamePattern(projectId, groupId).test(pathname)
+    (!OPAQUE_REQUESTED_PATHNAME_PATTERN.test(pathname) &&
+      !legacyRequestedPathnamePattern(projectId, groupId).test(pathname))
   ) {
     throw new CloudApiError(
       "VALIDATION_ERROR",
@@ -77,10 +103,7 @@ function assertRequestedPathname(
       400,
     );
   }
-  const basename = pathname.slice(pathname.lastIndexOf("/") + 1, -4);
-  if (!UUID_PATTERN.test(basename)) {
-    throw new CloudApiError("VALIDATION_ERROR", "Blob файлын ID буруу байна.", 400);
-  }
+  assertPathnameUuid(pathname);
 }
 
 function parseTokenPayload(value: string | null | undefined): UploadTokenPayload {
@@ -126,7 +149,7 @@ function parseTokenPayload(value: string | null | undefined): UploadTokenPayload
   if (!Number.isSafeInteger(generation) || (generation as number) < (legacyV1 ? -1 : 1)) {
     throw new CloudApiError("BAD_REQUEST", "Upload callback generation буруу байна.", 400);
   }
-  assertRequestedPathname(
+  assertCallbackRequestedPathname(
     object.requestedPathname,
     validated.projectId,
     validated.groupId,
@@ -181,8 +204,8 @@ async function validateCompletedBlob(
   if (url.protocol !== "https:" || !BLOB_HOST_PATTERN.test(url.hostname)) {
     throw new CloudApiError("BAD_REQUEST", "Blob URL зөвшөөрөгдөөгүй байна.", 400);
   }
-  if (!completedPathnamePattern(payload.projectId, payload.groupId).test(blob.pathname)) {
-    throw new CloudApiError("BAD_REQUEST", "Blob pathname project/group-т тохирохгүй байна.", 400);
+  if (!completedPathnamePattern(payload.requestedPathname).test(blob.pathname)) {
+    throw new CloudApiError("BAD_REQUEST", "Blob pathname хүсэлттэй тохирохгүй байна.", 400);
   }
 
   const metadata = await head(blob.url);
@@ -215,7 +238,7 @@ async function removeUploadedBlob(
   blob: PutBlobResult,
   payload: UploadTokenPayload,
 ): Promise<void> {
-  if (!completedPathnamePattern(payload.projectId, payload.groupId).test(blob.pathname)) {
+  if (!completedPathnamePattern(payload.requestedPathname).test(blob.pathname)) {
     return;
   }
   await enqueueAndDrainBlobDeletion(blob.pathname);
@@ -419,7 +442,7 @@ export async function handleBlobUpload(
       const payload = parseUploadClientPayload(clientPayload);
       await authorizeProject(request, payload.projectId);
       await assertCloudGroup(payload.projectId, payload.groupId);
-      assertRequestedPathname(pathname, payload.projectId, payload.groupId);
+      assertOpaqueRequestedPathname(pathname);
       await consumeBlobUploadRateLimits({
         projectId: payload.projectId,
         clientIp: trustedForwardedClientIp(request),

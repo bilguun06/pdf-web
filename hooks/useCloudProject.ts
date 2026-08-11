@@ -576,7 +576,9 @@ async function uploadPdfToCloud(options: {
   pageCount: number;
   onProgress?: (loaded: number, total: number, percentage: number) => void;
 }): Promise<{ url: string }> {
-  const pathname = `projects/${options.projectId}/${options.groupId}/${secureRandomUuid()}.pdf`;
+  // Blob URLs are public. Keep internal project/group identifiers out of the
+  // pathname; authorization context travels only in the signed client payload.
+  const pathname = `pdfs/${secureRandomUuid()}.pdf`;
   const result = await upload(pathname, options.blob, {
     access: "public",
     handleUploadUrl: "/api/blob/upload",

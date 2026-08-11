@@ -212,6 +212,8 @@ Public share viewer direct PDF URL ашигладаг тул **Public store** с
 5. Project → **Settings → Environment Variables** дээр `BLOB_READ_WRITE_TOKEN` автоматаар нэмэгдсэнийг шалгана.
 6. Local development-д token-ийг `.env.local` руу аюулгүй хуулна, эсвэл linked project дээр `npx vercel env pull .env.local` ашиглана.
 
+Шинэ upload бүр `pdfs/<random-uuid>-<random-suffix>.pdf` гэсэн opaque pathname ашиглана. Internal project/group UUID нь public Blob URL-д орохгүй; authorization context зөвхөн signed upload metadata-д дамжина.
+
 Албан ёсны тайлбар: [Vercel Blob Public Storage](https://vercel.com/docs/vercel-blob/public-storage), [Client Uploads](https://vercel.com/docs/vercel-blob/client-upload).
 
 ## Blob cleanup cron
