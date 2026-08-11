@@ -38,6 +38,7 @@ export interface GroupCardProps {
   onDuplicate?: (groupId: string) => void;
   onDelete?: (groupId: string) => void;
   dragDisabled?: boolean;
+  readOnly?: boolean;
   disabled?: boolean;
 }
 
@@ -58,6 +59,7 @@ export function GroupCard({
   onDuplicate,
   onDelete,
   dragDisabled = false,
+  readOnly = false,
   disabled = false,
 }: GroupCardProps) {
   const {
@@ -68,7 +70,10 @@ export function GroupCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: group.id, disabled: dragDisabled || disabled });
+  } = useSortable({
+    id: group.id,
+    disabled: readOnly || dragDisabled || disabled,
+  });
 
   const status = groupStatus(group);
   const hasPdf = Boolean(group.fileName);
@@ -135,6 +140,7 @@ export function GroupCard({
       disabled: !onDelete,
     },
   ];
+  const hasActions = !readOnly && menuItems.some((item) => !item.disabled);
 
   return (
     <div
@@ -164,19 +170,21 @@ export function GroupCard({
       </button>
 
       <div className="pointer-events-none relative z-10 flex min-w-0 items-start gap-1.5">
-        <button
-          ref={setActivatorNodeRef}
-          type="button"
-          {...attributes}
-          {...listeners}
-          disabled={dragDisabled || disabled}
-          tabIndex={active ? 0 : -1}
-          aria-label={`${displayName} бүлгийг зөөх`}
-          onClick={(event) => event.stopPropagation()}
-          className="pointer-events-auto -ml-2 -mt-1 inline-flex size-8 shrink-0 touch-none items-center justify-center rounded-lg text-[var(--text-muted)] opacity-40 outline-none transition-opacity hover:bg-[var(--surface-muted)] hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:hidden sm:cursor-grab sm:active:cursor-grabbing"
-        >
-          <GripVertical aria-hidden="true" className="size-4" />
-        </button>
+        {!readOnly ? (
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            {...attributes}
+            {...listeners}
+            disabled={dragDisabled || disabled}
+            tabIndex={active ? 0 : -1}
+            aria-label={`${displayName} бүлгийг зөөх`}
+            onClick={(event) => event.stopPropagation()}
+            className="pointer-events-auto -ml-2 -mt-1 inline-flex size-8 shrink-0 touch-none items-center justify-center rounded-lg text-[var(--text-muted)] opacity-40 outline-none transition-opacity hover:bg-[var(--surface-muted)] hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:hidden sm:cursor-grab sm:active:cursor-grabbing"
+          >
+            <GripVertical aria-hidden="true" className="size-4" />
+          </button>
+        ) : null}
 
         <div className="min-w-0 flex-1 pt-0.5">
           <p className="truncate text-sm font-bold leading-5 text-[var(--text)]" title={displayName}>
@@ -187,16 +195,23 @@ export function GroupCard({
           </p>
         </div>
 
-        <ActionMenu
-          items={menuItems}
-          disabled={disabled}
-          triggerTabIndex={active ? 0 : -1}
-          label={`${displayName} бүлгийн үйлдлүүд`}
-          className="pointer-events-auto -mr-1 -mt-1 shrink-0"
-        />
+        {hasActions ? (
+          <ActionMenu
+            items={menuItems}
+            disabled={disabled}
+            triggerTabIndex={active ? 0 : -1}
+            label={`${displayName} бүлгийн үйлдлүүд`}
+            className="pointer-events-auto -mr-1 -mt-1 shrink-0"
+          />
+        ) : null}
       </div>
 
-      <div className="pointer-events-none relative z-10 mt-auto flex min-w-0 items-center justify-between gap-2 pl-6">
+      <div
+        className={clsx(
+          "pointer-events-none relative z-10 mt-auto flex min-w-0 items-center justify-between gap-2",
+          readOnly || dragDisabled ? "pl-0" : "pl-6",
+        )}
+      >
         <div
           className={clsx(
             "flex min-w-0 items-center gap-1.5 text-[11px] font-semibold",

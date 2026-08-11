@@ -88,9 +88,13 @@ export interface OpenPdfDocumentOptions {
 export interface ManagedPdfDocument {
   readonly document: PDFDocumentProxy;
   readonly loadingTask: PDFDocumentLoadingTask;
-  readonly objectUrl: string;
+  /** Present only when this loader created a temporary URL for a Blob/File. */
+  readonly objectUrl: string | null;
   destroy: () => Promise<void>;
 }
+
+/** Local files and remote cloud URLs supported by the shared PDF viewer. */
+export type PdfSource = Blob | File | string;
 
 function abortError(): DOMException | Error {
   if (typeof DOMException !== "undefined") {
@@ -101,9 +105,28 @@ function abortError(): DOMException | Error {
   return error;
 }
 
-function validateSource(source: Blob): void {
+function validateSource(source: PdfSource): void {
+  if (typeof source === "string") {
+    if (!source.trim()) {
+      throw new PdfEngineError("invalid", PDF_ERROR_MESSAGES.invalid);
+    }
+    return;
+  }
+
   if (!(source instanceof Blob) || source.size === 0) {
     throw new PdfEngineError("invalid", PDF_ERROR_MESSAGES.invalid);
+  }
+}
+
+function normalizeRemoteSource(source: string): string {
+  try {
+    const url = new URL(source, window.location.href);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new Error("Unsupported PDF URL protocol");
+    }
+    return url.toString();
+  } catch (error) {
+    throw new PdfEngineError("invalid", PDF_ERROR_MESSAGES.invalid, error);
   }
 }
 
@@ -158,12 +181,12 @@ export function getPdfErrorMessage(error: unknown): string {
 }
 
 /**
- * Opens a Blob/File and owns every disposable resource created for it. The
- * caller must call `destroy`; aborting before resolution performs the same
- * cleanup automatically.
+ * Opens a local Blob/File or remote URL and owns every disposable resource it
+ * creates. The caller must call `destroy`; aborting before resolution performs
+ * the same cleanup automatically.
  */
 export async function openPdfDocument(
-  source: Blob,
+  source: PdfSource,
   options: OpenPdfDocumentOptions = {},
 ): Promise<ManagedPdfDocument> {
   validateSource(source);
@@ -177,11 +200,12 @@ export async function openPdfDocument(
     throw abortError();
   }
 
-  const objectUrl = URL.createObjectURL(source);
+  const objectUrl = typeof source === "string" ? null : URL.createObjectURL(source);
+  const sourceUrl = objectUrl ?? normalizeRemoteSource(source as string);
   let loadingTask: PDFDocumentLoadingTask;
   try {
     loadingTask = pdfjs.getDocument({
-      url: objectUrl,
+      url: sourceUrl,
       useSystemFonts: true,
       canvasMaxAreaInBytes: PDF_CANVAS_MAX_AREA_BYTES,
       // Blob URLs support range requests in modern browsers. Avoid eagerly
@@ -191,7 +215,7 @@ export async function openPdfDocument(
       disableStream: true,
     });
   } catch (error) {
-    URL.revokeObjectURL(objectUrl);
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
     throw normalizePdfError(error);
   }
 
@@ -202,7 +226,7 @@ export async function openPdfDocument(
     try {
       await loadingTask.destroy();
     } finally {
-      URL.revokeObjectURL(objectUrl);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     }
   };
 

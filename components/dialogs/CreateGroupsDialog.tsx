@@ -10,6 +10,7 @@ export interface CreateGroupsDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreate: (count: number) => void | Promise<void>;
   initialCount?: number;
+  maxCount?: number;
   loading?: boolean;
 }
 
@@ -17,6 +18,7 @@ function CreateGroupsForm({
   onOpenChange,
   onCreate,
   initialCount = 21,
+  maxCount,
   loading = false,
 }: Omit<CreateGroupsDialogProps, "open">) {
   const formId = useId();
@@ -29,8 +31,17 @@ function CreateGroupsForm({
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const parsedCount = Number(count);
-    const valid = Number.isSafeInteger(parsedCount) && parsedCount >= 1;
-    setCountError(valid ? undefined : "1 буюу түүнээс их бүхэл тоо оруулна уу.");
+    const valid =
+      Number.isSafeInteger(parsedCount) &&
+      parsedCount >= 1 &&
+      (maxCount === undefined || parsedCount <= maxCount);
+    setCountError(
+      valid
+        ? undefined
+        : maxCount === undefined
+          ? "1 буюу түүнээс их бүхэл тоо оруулна уу."
+          : `1-${maxCount.toLocaleString("mn-MN")} хооронд бүхэл тоо оруулна уу.`,
+    );
     setSubmitError(undefined);
     if (!valid) return;
 
@@ -74,6 +85,7 @@ function CreateGroupsForm({
           type="number"
           inputMode="numeric"
           min={1}
+          max={maxCount}
           step={1}
           label="Хэдэн бүлэг үүсгэх вэ?"
           value={count}
@@ -83,7 +95,11 @@ function CreateGroupsForm({
             if (countError) setCountError(undefined);
           }}
           error={countError}
-          hint="Жишээ нь 21 гэж оруулбал 21 тусдаа бүлэг үүснэ."
+          hint={
+            maxCount === undefined
+              ? "Жишээ нь 21 гэж оруулбал 21 тусдаа бүлэг үүснэ."
+              : `Одоо хамгийн ихдээ ${maxCount.toLocaleString("mn-MN")} бүлэг нэмж болно.`
+          }
         />
         {submitError ? (
           <p role="alert" className="mt-4 text-sm font-medium text-[var(--danger)]">

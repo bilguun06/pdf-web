@@ -23,12 +23,14 @@ export interface GroupTabsProps {
   selectedGroupId?: string | null;
   onSelectGroup: (groupId: string) => void;
   onReorder?: (activeId: string, overId: string) => void;
-  onAddGroup: () => void;
+  onAddGroup?: () => void;
   onRenameGroup?: (groupId: string) => void;
   onReplacePdf?: (groupId: string) => void;
   onRemovePdf?: (groupId: string) => void;
   onDuplicateGroup?: (groupId: string) => void;
   onDeleteGroup?: (groupId: string) => void;
+  /** Hides every mutation control while preserving tab selection/navigation. */
+  readOnly?: boolean;
   disabled?: boolean;
 }
 
@@ -43,6 +45,7 @@ export function GroupTabs({
   onRemovePdf,
   onDuplicateGroup,
   onDeleteGroup,
+  readOnly = false,
   disabled = false,
 }: GroupTabsProps) {
   const tabListRef = useRef<HTMLDivElement>(null);
@@ -52,7 +55,7 @@ export function GroupTabs({
   );
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id || !onReorder) return;
+    if (readOnly || !over || active.id === over.id || !onReorder) return;
     onReorder(String(active.id), String(over.id));
   };
 
@@ -82,7 +85,7 @@ export function GroupTabs({
             {groups.length}
           </span>
         </div>
-        {groups.length > 1 && onReorder ? (
+        {!readOnly && groups.length > 1 && onReorder ? (
           <p className="hidden text-[11px] text-[var(--text-muted)] sm:block">
             Бариулаас чирж эрэмбэлнэ
           </p>
@@ -127,29 +130,32 @@ export function GroupTabs({
                   ordinal={index + 1}
                   active={selectedGroupId === group.id}
                   onSelect={onSelectGroup}
-                  onRename={onRenameGroup}
-                  onReplacePdf={onReplacePdf}
-                  onRemovePdf={onRemovePdf}
-                  onDuplicate={onDuplicateGroup}
-                  onDelete={onDeleteGroup}
-                  dragDisabled={!onReorder || groups.length < 2}
+                  onRename={readOnly ? undefined : onRenameGroup}
+                  onReplacePdf={readOnly ? undefined : onReplacePdf}
+                  onRemovePdf={readOnly ? undefined : onRemovePdf}
+                  onDuplicate={readOnly ? undefined : onDuplicateGroup}
+                  onDelete={readOnly ? undefined : onDeleteGroup}
+                  dragDisabled={readOnly || !onReorder || groups.length < 2}
+                  readOnly={readOnly}
                   disabled={disabled}
                 />
               </div>
             ))}
           </SortableContext>
 
-          <button
-            type="button"
-            onClick={onAddGroup}
-            disabled={disabled}
-            className="flex h-[112px] w-[184px] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border-strong)] bg-[var(--surface)] text-sm font-bold text-[var(--text-muted)] outline-none transition-[border-color,background-color,color] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] disabled:pointer-events-none disabled:opacity-50"
-          >
-            <span className="flex size-8 items-center justify-center rounded-full border border-current">
-              <Plus aria-hidden="true" className="size-4" />
-            </span>
-            Бүлэг нэмэх
-          </button>
+          {!readOnly && onAddGroup ? (
+            <button
+              type="button"
+              onClick={onAddGroup}
+              disabled={disabled}
+              className="flex h-[112px] w-[184px] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border-strong)] bg-[var(--surface)] text-sm font-bold text-[var(--text-muted)] outline-none transition-[border-color,background-color,color] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] disabled:pointer-events-none disabled:opacity-50"
+            >
+              <span className="flex size-8 items-center justify-center rounded-full border border-current">
+                <Plus aria-hidden="true" className="size-4" />
+              </span>
+              Бүлэг нэмэх
+            </button>
+          ) : null}
         </div>
       </DndContext>
     </section>

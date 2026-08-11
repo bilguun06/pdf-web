@@ -30,7 +30,9 @@ import { GroupTabs } from "@/components/GroupTabs";
 import { Header } from "@/components/Header";
 import { PdfDropZone } from "@/components/PdfDropZone";
 import { PdfViewer } from "@/components/PdfViewer";
+import { CloudShareDialog } from "@/components/cloud/CloudShareDialog";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useCloudMigration } from "@/hooks/useCloudProject";
 import { useProject } from "@/hooks/useProject";
 import {
   formatFileSize,
@@ -185,6 +187,7 @@ export function PdfGroupManager() {
   const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null);
   const [removePdfGroupId, setRemovePdfGroupId] = useState<string | null>(null);
   const [pendingProjectFile, setPendingProjectFile] = useState<File | null>(null);
+  const [cloudDialogOpen, setCloudDialogOpen] = useState(false);
   const [viewerFailure, setViewerFailure] = useState<{
     key: string | null;
     message: string | null;
@@ -192,6 +195,7 @@ export function PdfGroupManager() {
   const projectInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const replacementGroupRef = useRef<string | null>(null);
+  const cloud = useCloudMigration({ project, getPdfBlob });
 
   const renameTarget = project.groups.find((group: PdfGroup) => group.id === renameGroupId);
   const deleteTarget = project.groups.find((group: PdfGroup) => group.id === deleteGroupId);
@@ -258,6 +262,11 @@ export function PdfGroupManager() {
 
   const handlePdf = useCallback(
     async (groupId: string, file: File) => {
+      if (cloud.isSaving) {
+        const message = "Cloud хадгалалт дууссаны дараа PDF-ээ өөрчилнө үү.";
+        toast.info(message);
+        throw new Error(message);
+      }
       if (uploadLockRef.current) {
         const message = "Өмнөх PDF-г уншиж дуустал түр хүлээнэ үү.";
         toast.info(message);
@@ -289,7 +298,7 @@ export function PdfGroupManager() {
         setUploadingGroupId(null);
       }
     },
-    [attachPdf, selectGroup],
+    [attachPdf, cloud.isSaving, selectGroup],
   );
 
   const openPdfPicker = useCallback(
@@ -339,10 +348,17 @@ export function PdfGroupManager() {
     setPendingProjectFile(file);
   };
 
+  const saveToCloud = useCallback(() => {
+    setCloudDialogOpen(true);
+    void cloud.saveToCloud().catch(() => undefined);
+  }, [cloud]);
+
   useKeyboardShortcuts({
     enabled:
       isHydrated &&
       !isBusy &&
+      !cloud.isSaving &&
+      !cloudDialogOpen &&
       !uploadingGroupId &&
       !newProjectOpen &&
       !createGroupsOpen &&
@@ -440,7 +456,12 @@ export function PdfGroupManager() {
         onNewProject={() => setNewProjectOpen(true)}
         onSaveProject={() => void saveProject()}
         onOpenProject={openProjectFile}
-        disabled={isBusy || Boolean(uploadingGroupId)}
+        onCloudSave={saveToCloud}
+        onShare={() => setCloudDialogOpen(true)}
+        isCloudSaving={cloud.isSaving}
+        cloudReady={Boolean(cloud.binding?.lastSyncedAt)}
+        cloudProgress={cloud.progress.percent}
+        disabled={isBusy || Boolean(uploadingGroupId) || cloud.isSaving}
       />
 
       <aside
@@ -452,8 +473,9 @@ export function PdfGroupManager() {
           className="mt-0.5 size-3.5 shrink-0 text-[var(--accent)] sm:mt-0"
         />
         <span>
-          Таны PDF файлууд сервер рүү автоматаар илгээгдэхгүй. Файлууд таны browser
-          дээр боловсруулагдана.
+          {cloud.binding?.lastSyncedAt
+            ? "Local хуулбар browser-д хэвээр үлдсэн. “Cloud шинэчлэх” дарахад өөрчлөлтүүд cloud руу синк хийгдэнэ."
+            : "Таны PDF файлууд сервер рүү автоматаар илгээгдэхгүй. “Cloud-д хадгалах” үйлдлийг зөвшөөрсний дараа л upload хийгдэнэ."}
         </span>
       </aside>
 
@@ -481,7 +503,7 @@ export function PdfGroupManager() {
               });
           }}
           onDeleteGroup={setDeleteGroupId}
-          disabled={isBusy || Boolean(uploadingGroupId)}
+          disabled={isBusy || Boolean(uploadingGroupId) || cloud.isSaving}
         />
       ) : null}
 
@@ -490,7 +512,7 @@ export function PdfGroupManager() {
           <EmptyState
             onCreateDefault={() => setCreateGroupsOpen(true)}
             onCreateOne={() => void addGroup()}
-            disabled={isBusy || Boolean(uploadingGroupId)}
+            disabled={isBusy || Boolean(uploadingGroupId) || cloud.isSaving}
           />
         ) : selectedGroup ? (
           <section className="flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 sm:px-5 sm:pb-5 lg:px-6">
@@ -530,6 +552,7 @@ export function PdfGroupManager() {
                   onChange={(event) => setGroupNote(selectedGroup.id, event.target.value)}
                   placeholder="Тэмдэглэл нэмэх…"
                   maxLength={2000}
+                  disabled={cloud.isSaving}
                   className="h-10 min-w-0 flex-1 bg-transparent text-xs font-medium text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] sm:text-sm"
                 />
               </label>
@@ -576,7 +599,7 @@ export function PdfGroupManager() {
                       onFileSelect={(file) => handlePdf(selectedGroup.id, file)}
                       isLoading={uploadingGroupId === selectedGroup.id}
                       error={uploadError}
-                      disabled={isBusy}
+                      disabled={isBusy || cloud.isSaving}
                       className="w-full"
                     />
                   </div>
@@ -591,7 +614,7 @@ export function PdfGroupManager() {
         open={newProjectOpen}
         onOpenChange={setNewProjectOpen}
         initialName="Шинэ төсөл"
-        loading={isBusy}
+        loading={isBusy || cloud.isSaving}
         onCreate={async ({ name, groupCount }) => {
           await newProject(name, groupCount);
           toast.success("Шинэ төсөл үүслээ.");
@@ -602,7 +625,7 @@ export function PdfGroupManager() {
         open={createGroupsOpen}
         onOpenChange={setCreateGroupsOpen}
         initialCount={21}
-        loading={isBusy}
+        loading={isBusy || cloud.isSaving}
         onCreate={async (count) => {
           await addGroups(count);
           toast.success(`${count.toLocaleString("mn-MN")} бүлэг үүслээ.`);
@@ -615,7 +638,7 @@ export function PdfGroupManager() {
           if (!open) setRenameGroupId(null);
         }}
         currentName={renameTarget?.name || ""}
-        loading={isBusy}
+        loading={isBusy || cloud.isSaving}
         onRename={async (name) => {
           if (!renameTarget) return;
           await renameGroup(renameTarget.id, name);
@@ -637,7 +660,7 @@ export function PdfGroupManager() {
         }
         confirmLabel="Төсөл нээх"
         destructive
-        loading={isBusy}
+        loading={isBusy || cloud.isSaving}
         onConfirm={async () => {
           if (!pendingProjectFile) return;
           try {
@@ -668,7 +691,7 @@ export function PdfGroupManager() {
         }
         confirmLabel="PDF устгах"
         destructive
-        loading={isBusy}
+        loading={isBusy || cloud.isSaving}
         onConfirm={async () => {
           if (!removePdfTarget) return;
           await removePdf(removePdfTarget.id);
@@ -684,7 +707,7 @@ export function PdfGroupManager() {
         }}
         groupName={deleteTarget?.name || ""}
         hasPdf={Boolean(deleteTarget?.fileName)}
-        loading={isBusy}
+        loading={isBusy || cloud.isSaving}
         onConfirm={async () => {
           if (!deleteTarget) return;
           await deleteGroup(deleteTarget.id);
@@ -692,6 +715,17 @@ export function PdfGroupManager() {
           focusGroupTab();
           toast.success("Бүлэг устгагдлаа.");
         }}
+      />
+
+      <CloudShareDialog
+        open={cloudDialogOpen}
+        onOpenChange={setCloudDialogOpen}
+        binding={cloud.binding}
+        progress={cloud.progress}
+        isSaving={cloud.isSaving}
+        error={cloud.error}
+        warning={cloud.warning}
+        onRetry={saveToCloud}
       />
     </div>
   );

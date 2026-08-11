@@ -8,6 +8,7 @@ import {
   openPdfDocument,
   type ManagedPdfDocument,
   type PdfLoadProgress,
+  type PdfSource,
 } from "@/lib/pdf-engine";
 
 export interface UsePdfDocumentOptions {
@@ -24,7 +25,7 @@ export interface UsePdfDocumentResult {
 }
 
 interface PdfDocumentState {
-  source: Blob | null;
+  source: PdfSource | null;
   document: PDFDocumentProxy | null;
   pageCount: number;
   status: "idle" | "loading" | "ready" | "error";
@@ -42,7 +43,7 @@ const INITIAL_STATE: PdfDocumentState = {
 };
 
 export function usePdfDocument(
-  source: Blob | File | null,
+  source: PdfSource | null,
   options: UsePdfDocumentOptions = {},
 ): UsePdfDocumentResult {
   const [state, setState] = useState<PdfDocumentState>(INITIAL_STATE);
@@ -80,13 +81,17 @@ export function usePdfDocument(
           return;
         }
 
+        const sourceSize = typeof source === "string" ? undefined : source.size;
         setState({
           source,
           document: opened.document,
           pageCount: opened.document.numPages,
           status: "ready",
           error: null,
-          progress: { loaded: source.size, total: source.size, percent: 100 },
+          progress:
+            sourceSize === undefined
+              ? { loaded: 0, percent: 100 }
+              : { loaded: sourceSize, total: sourceSize, percent: 100 },
         });
         callbacksRef.current.onLoad?.(opened.document.numPages);
       })

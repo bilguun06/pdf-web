@@ -22,6 +22,7 @@ import {
 } from "@/components/PdfToolbar";
 import { ThumbnailSidebar } from "@/components/ThumbnailSidebar";
 import { usePdfDocument } from "@/hooks/usePdfDocument";
+import type { PdfSource } from "@/lib/pdf-engine";
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
@@ -31,7 +32,7 @@ const DEFAULT_DESKTOP_ZOOM = 0.75;
 const DESKTOP_MEDIA_QUERY = "(min-width: 768px)";
 
 export interface PdfViewerProps {
-  source: Blob | File;
+  source: PdfSource;
   fileName: string;
   pageCount?: number;
   initialPage?: number;
@@ -41,16 +42,18 @@ export interface PdfViewerProps {
   onDocumentError?: (message: string) => void;
   /** Called when PDF.js has successfully opened the document. */
   onDocumentLoad?: (pageCount: number) => void;
+  /** Public/mobile surfaces can start without the thumbnail drawer covering the PDF. */
+  initialSidebarOpen?: boolean;
   className?: string;
 }
 
 interface PageState {
-  source: Blob | File;
+  source: PdfSource;
   page: number;
 }
 
 interface SearchState {
-  source: Blob | File | null;
+  source: PdfSource | null;
   query: string;
   matchCount: number;
   matchIndex: number;
@@ -59,7 +62,7 @@ interface SearchState {
 }
 
 interface SearchCounts {
-  source: Blob | File | null;
+  source: PdfSource | null;
   query: string;
   counts: Uint32Array | null;
 }
@@ -109,6 +112,7 @@ export function PdfViewer({
   onError,
   onDocumentError,
   onDocumentLoad,
+  initialSidebarOpen = true,
   className,
 }: PdfViewerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -172,7 +176,7 @@ export function PdfViewer({
   zoomRef.current = zoom;
   const responsiveDefaultAppliedRef = useRef(false);
   const userAdjustedZoomRef = useRef(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(initialSidebarOpen);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(900);
   const scrollFrameRef = useRef<number | null>(null);
@@ -364,15 +368,26 @@ export function PdfViewer({
   };
 
   const handleDownload = () => {
-    const objectUrl = URL.createObjectURL(source);
     const link = globalThis.document.createElement("a");
-    link.href = objectUrl;
+    let objectUrl: string | null = null;
+    if (typeof source === "string") {
+      link.href = source;
+    } else {
+      objectUrl = URL.createObjectURL(source);
+      link.href = objectUrl;
+    }
     link.download = fileName.trim() || "document.pdf";
+    if (!objectUrl) {
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    }
     link.style.display = "none";
     globalThis.document.body.appendChild(link);
     link.click();
     link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+    if (objectUrl) {
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+    }
   };
 
   const handleSearchQueryChange = (query: string) => {
@@ -707,7 +722,7 @@ export function PdfViewer({
             aria-hidden="true"
           />
           <div>
-            <p className="m-0 text-sm font-semibold">PDF уншиж байна...</p>
+            <p className="m-0 text-sm font-semibold">PDF ачаалж байна...</p>
             <p className="mt-1 max-w-sm truncate text-xs text-[var(--text-muted)]">
               {fileName}
               {suppliedPageCount > 0 && ` · ${suppliedPageCount} хуудас`}
